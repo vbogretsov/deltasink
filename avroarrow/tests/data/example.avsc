@@ -1,0 +1,104 @@
+{
+  "type": "record",
+  "name": "Example",
+  "namespace": "com.deltasink.test",
+  "fields": [
+    {
+      "name": "f_string",
+      "type": "string"
+    },
+    {
+      "name": "f_opt_string",
+      "type": ["null", "string"]
+    },
+    {
+      "name": "f_bool",
+      "type": "boolean"
+    },
+    {
+      "name": "f_int",
+      "type": "int"
+    },
+    {
+      "name": "f_long",
+      "type": "long"
+    },
+    {
+      "name": "f_float",
+      "type": "float"
+    },
+    {
+      "name": "f_double",
+      "type": "double"
+    },
+    {
+      "name": "f_uuid",
+      "type": "string",
+      "logicalType": "uuid"
+    },
+    {
+      "name": "f_dec128",
+      "type": "bytes",
+      "logicalType": "decimal",
+      "precision": 38,
+      "scale": 8
+    },
+    {
+      "name": "f_opt_date",
+      "type": ["null", {"type": "int", "logicalType": "date"}]
+    },
+    {
+      "name": "f_duration",
+      "type": "fixed",
+      "size": 12,
+      "logicalType": "duration"
+    },
+    {
+      "name": "f_bytes",
+      "type": "bytes"
+    },
+    {
+      "name": "f_opt_fixed",
+      "type": ["null", {"type": "fixed", "size": 32, "name": "test_fixed"}]
+    },
+    {
+      "name": "f_time_ms",
+      "type": "int",
+      "logicalType": "time-millis"
+    },
+    {
+      "name": "f_time_mc",
+      "type": "long",
+      "logicalType": "time-micros"
+    },
+    {
+      "name": "f_timestamp_ms",
+      "type": "long",
+      "logicalType": "timestamp-millis"
+    },
+    {
+      "name": "f_timestamp_mc",
+      "type": "long",
+      "logicalType": "timestamp-micros"
+    },
+    {
+      "name": "f_loc_timestamp_ms",
+      "type": "long",
+      "logicalType": "local-timestamp-millis"
+    },
+    {
+      "name": "f_loc_timestamp_mc",
+      "type": ["null", {"type": "long", "logicalType": "local-timestamp-micros"}]
+    },
+    {
+      "name": "f_array",
+      "type": "array",
+      "items": ["null", "string"]
+    },
+    {
+      "name": "f_map",
+      "type": "map",
+      "values": "long"
+    }
+  ]
+}

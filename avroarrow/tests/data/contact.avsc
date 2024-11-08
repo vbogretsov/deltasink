@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "Contact",
+  "namespace": "com.deltasink.test",
+  "fields": [
+    {
+      "name": "email",
+      "type": "string"
+    },
+    {
+      "name": "phone",
+      "type": ["null", "string"]
+    }
+  ]
+}
