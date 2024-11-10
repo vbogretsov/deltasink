@@ -609,7 +609,7 @@ fn test_append_struct() {
             contacts: hashmap! {
                 "rob".to_string() => Contact {
                     email: "rob@mail.com".to_string(),
-                    phone: Some("+1 623 456 789".to_string()),
+                    phone: None,
                 },
             },
         },
