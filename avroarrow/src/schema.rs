@@ -155,6 +155,13 @@ pub fn create_builder(
         AvroSchema::Array(schema) => array_builder(schema, cap),
         AvroSchema::Map(schema) => map_builder(schema, cap),
         AvroSchema::Record(schema) => struct_builder(schema, cap),
+        AvroSchema::Union(schema) => {
+            if is_optional(schema) {
+                create_builder(&schema.variants()[1], cap)
+            } else {
+                Err("only unions of king [null, TYPE] are supported".into())
+            }
+        }
         _ => Err(format!("cannot create builder for {:?}", avro).into()),
     }
 }
@@ -212,14 +219,14 @@ fn struct_builder(
     schema: &RecordSchema,
     cap: usize,
 ) -> Result<Box<dyn ArrayBuilder>, Box<dyn Error>> {
-    let fields: Result<Vec<_>, Box<dyn Error>> = schema
-        .fields
-        .iter()
-        .map(|f| Ok(Field::new(
-            f.name.clone(),
-            convert_to_datatype(&f.schema)?,
-            is_nullable(&f.schema),
-        )))
-        .collect();
-    Ok(Box::new(StructBuilder::from_fields(fields?, cap)))
+    let mut fields: Vec<Field> = Vec::new();
+    let mut builders: Vec<Box<dyn ArrayBuilder>> = Vec::new();
+
+    for f in &schema.fields {
+        let t = convert_to_datatype(&f.schema)?;
+        fields.push(Field::new(f.name.clone(), t, is_nullable(&f.schema)));
+        builders.push(create_builder(&f.schema, cap)?);
+    }
+
+    Ok(Box::new(StructBuilder::new(fields, builders)))
 }

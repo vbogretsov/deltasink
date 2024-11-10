@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use apache_avro::schema::{ArraySchema, DecimalSchema, EnumSchema, FixedSchema, MapSchema, Schema};
 use apache_avro::Decimal;
-// use apache_avro::AvroSchema;
+use apache_avro::AvroSchema;
 use apache_avro::types::Value;
 use arrow::array::*;
 use arrow::datatypes::{DataType, TimeUnit};
 use chrono::Local;
 use pretty_assertions::assert_eq;
-// use serde::Serialize;
+use serde::Serialize;
 use maplit::hashmap;
 use num_bigint::ToBigInt;
 use uuid;
@@ -551,7 +551,7 @@ fn test_append_string_map() {
     );
 }
 
-/* #[derive(Serialize, AvroSchema)]
+#[derive(Serialize, AvroSchema)]
 struct Person {
     id: String,
     name: String,
@@ -559,7 +559,7 @@ struct Person {
 }
 
 #[test]
-fn test_serialization() {
+fn test_append_struct() {
     let schema = Person::get_schema();
     dbg!(&schema);
 
@@ -588,12 +588,17 @@ fn test_serialization() {
 
     let stream = writer.into_inner().unwrap();
     let reader = apache_avro::Reader::with_schema(&schema, &stream[..]).unwrap();
+    let values: Vec<Value> = reader.into_iter().map(|v| v.unwrap()).collect();
 
-    for record in reader {
-        dbg!(record.unwrap());
+    let mut builder = avroarrow::create_builder(&schema, 32).unwrap();
+    for value in &values {
+        avroarrow::append_record(&mut builder, &schema, value).unwrap();
     }
 
-    match schema {
+    let actual = builder.finish();
+    dbg!(actual);
+
+    /* match schema {
         Schema::Record(record_schema) => {
             match &record_schema.fields[2].schema {
                 Schema::Union(union_schema) => {
@@ -603,5 +608,5 @@ fn test_serialization() {
             }
         },
         _ => {  }
-    }
-} */
+    } */
+}
