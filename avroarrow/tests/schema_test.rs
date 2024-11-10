@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use apache_avro::Schema as AvroSchema;
 use apache_avro::schema::Name;
@@ -15,16 +14,24 @@ macro_rules! tz_offset {
     };
 }
 
-macro_rules! array_of {
-    ($ty:expr, $nullable:expr) => {
-        DataType::List(Arc::new(Field::new("item", $ty, $nullable)))
-    };
+fn array_of(data_type: DataType, nullable: bool) -> DataType {
+    DataType::List(Field::new("item", data_type, nullable).into())
 }
 
-macro_rules! map_of {
-    ($ty:expr) => {
-        DataType::Dictionary(Box::new(DataType::Utf8), Box::new($ty))
-    };
+fn map_of(data_type: DataType, nullable: bool) -> DataType {
+    DataType::Map(
+        Field::new(
+            "entries",
+            DataType::Struct(
+                vec![
+                    Field::new("key", DataType::Utf8, false),
+                    Field::new("value", data_type, nullable),
+                ].into(),
+            ),
+            nullable,
+        ).into(),
+        false,
+    )
 }
 
 #[test]
@@ -54,11 +61,11 @@ fn test_convert_schema_flat() {
         Field::new("f_timestamp_mc", DataType::Timestamp(TimeUnit::Microsecond, None), false),
         Field::new("f_loc_timestamp_ms", DataType::Timestamp(TimeUnit::Millisecond, Some(tz_offset!())), false),
         Field::new("f_loc_timestamp_mc", DataType::Timestamp(TimeUnit::Microsecond, Some(tz_offset!())), true),
-        Field::new("f_array", array_of!(DataType::Utf8, true), false),
-        Field::new("f_map", map_of!(DataType::Int64), false),
+        Field::new("f_array", array_of(DataType::Utf8, true), false),
+        Field::new("f_map", map_of(DataType::Int64, false), false),
     ]);
 
-    let actual = avroarrow::convert_schema(&avro_schema);
+    let actual = avroarrow::convert_schema(&avro_schema).unwrap();
 
     assert_eq!(expected, actual);
 }
@@ -108,12 +115,22 @@ fn test_convert_schema_nested() {
         Field::new("first_name", DataType::Utf8, false),
         Field::new("last_name", DataType::Utf8, false),
         Field::new("birthdate", DataType::Date32, true),
-        Field::new("contacts", array_of!(arrow_contact_schema, true), false),
-        Field::new("addresses", map_of!(arrow_address_schema), false),
+        Field::new("contacts", array_of(arrow_contact_schema, true), false),
+        Field::new("addresses", map_of(arrow_address_schema, false), false),
         Field::new("job", arrow_job_schema, false),
     ]);
 
-    let actual = avroarrow::convert_schema(&person_schema);
+    let actual = avroarrow::convert_schema(&person_schema).unwrap();
 
     assert_eq!(expected, actual);
+}
+
+#[test]
+fn test_create_builder_flat() {
+    let avro_schema_str = std::fs::read_to_string("./tests/data/example.avsc")
+        .unwrap();
+    let avro_schema = AvroSchema::parse_str(&avro_schema_str)
+        .unwrap();
+
+    avroarrow::create_builder(&avro_schema, 100).unwrap();
 }
