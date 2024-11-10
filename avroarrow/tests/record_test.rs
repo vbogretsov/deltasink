@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use apache_avro::schema::{ArraySchema, DecimalSchema, EnumSchema, FixedSchema, MapSchema, Schema};
@@ -552,10 +553,17 @@ fn test_append_string_map() {
 }
 
 #[derive(Serialize, AvroSchema)]
+struct Contact {
+    email: String,
+    phone: Option<String>,
+}
+
+#[derive(Serialize, AvroSchema)]
 struct Person {
     id: String,
     name: String,
     age: Option<i32>,
+    contacts: HashMap<String, Contact>
 }
 
 #[test]
@@ -568,16 +576,42 @@ fn test_append_struct() {
             id: "p-1".to_string(),
             name: "Job".to_string(),
             age: Some(33),
+            contacts: hashmap! {
+                "personal".to_string() => Contact {
+                    email: "jon@mail.com".to_string(),
+                    phone: None,
+                },
+                "work".to_string() => Contact {
+                    email: "jon@company.com".to_string(),
+                    phone: Some("+1 123 456 789".to_string()),
+                }
+            }
         },
         Person {
             id: "p-2".to_string(),
             name: "Don".to_string(),
             age: Some(43),
+            contacts: hashmap! {
+                "personal".to_string() => Contact {
+                    email: "don@mail.com".to_string(),
+                    phone: Some("+1 223 456 789".to_string()),
+                },
+                "work".to_string() => Contact {
+                    email: "don@company.com".to_string(),
+                    phone: Some("+1 423 456 789".to_string()),
+                }
+            },
         },
         Person {
             id: "p-3".to_string(),
             name: "Rob".to_string(),
             age: None,
+            contacts: hashmap! {
+                "rob".to_string() => Contact {
+                    email: "rob@mail.com".to_string(),
+                    phone: Some("+1 623 456 789".to_string()),
+                },
+            },
         },
     ];
 
@@ -592,6 +626,7 @@ fn test_append_struct() {
 
     let mut builder = avroarrow::create_builder(&schema, 32).unwrap();
     for value in &values {
+        dbg!(&value);
         avroarrow::append_record(&mut builder, &schema, value).unwrap();
     }
 

@@ -80,8 +80,8 @@ fn convert_to_datatype(src: &AvroSchema) -> Result<DataType, Box<dyn Error>> {
             let entries = Field::new(
                 "entries",
                 DataType::Struct(vec![
-                    Field::new("key", DataType::Utf8, false),
-                    Field::new("value", convert_to_datatype(&schema.types)?, false),
+                    Field::new("keys", DataType::Utf8, false),
+                    Field::new("values", convert_to_datatype(&schema.types)?, true),
                 ].into()),
                 false,
             );
