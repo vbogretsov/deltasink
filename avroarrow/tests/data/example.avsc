@@ -48,12 +48,6 @@
       "type": ["null", {"type": "int", "logicalType": "date"}]
     },
     {
-      "name": "f_duration",
-      "type": "fixed",
-      "size": 12,
-      "logicalType": "duration"
-    },
-    {
       "name": "f_bytes",
       "type": "bytes"
     },
@@ -93,12 +87,47 @@
     {
       "name": "f_array",
       "type": "array",
+      "items": "string"
+    },
+    {
+      "name": "f_opt_array",
+      "type": [
+        "null",
+        {
+          "type": "array",
+          "items": "string"
+        }
+      ]
+    },
+    {
+      "name": "f_array_opt_item",
+      "type": "array",
       "items": ["null", "string"]
+    },
+    {
+      "name": "f_opt_array_opt_item",
+      "type": [
+        "null",
+        {
+          "type": "array",
+          "items": ["null", "string"]
+        }
+      ]
     },
     {
       "name": "f_map",
       "type": "map",
       "values": "long"
+    },
+    {
+      "name": "f_opt_map",
+      "type": [
+        "null",
+        {
+          "type": "map",
+          "values": "long"
+        }
+      ]
     }
   ]
 }

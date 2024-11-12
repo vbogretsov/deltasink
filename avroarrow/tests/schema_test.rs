@@ -24,8 +24,8 @@ fn map_of(data_type: DataType, nullable: bool) -> DataType {
             "entries",
             DataType::Struct(
                 vec![
-                    Field::new("key", DataType::Utf8, false),
-                    Field::new("value", data_type, nullable),
+                    Field::new("keys", DataType::Utf8, false),
+                    Field::new("values", data_type, nullable),
                 ].into(),
             ),
             nullable,
@@ -52,7 +52,6 @@ fn test_convert_schema_flat() {
         Field::new("f_uuid", DataType::FixedSizeBinary(16), false),
         Field::new("f_dec128", DataType::Decimal128(38, 8), false),
         Field::new("f_opt_date", DataType::Date32, true),
-        Field::new("f_duration", DataType::Duration(TimeUnit::Millisecond), false),
         Field::new("f_bytes", DataType::Binary, false),
         Field::new("f_opt_fixed", DataType::FixedSizeBinary(32), true),
         Field::new("f_time_ms", DataType::Time32(TimeUnit::Millisecond), false),
@@ -61,8 +60,12 @@ fn test_convert_schema_flat() {
         Field::new("f_timestamp_mc", DataType::Timestamp(TimeUnit::Microsecond, None), false),
         Field::new("f_loc_timestamp_ms", DataType::Timestamp(TimeUnit::Millisecond, Some(tz_offset!())), false),
         Field::new("f_loc_timestamp_mc", DataType::Timestamp(TimeUnit::Microsecond, Some(tz_offset!())), true),
-        Field::new("f_array", array_of(DataType::Utf8, true), false),
+        Field::new("f_array", array_of(DataType::Utf8, false), false),
+        Field::new("f_opt_array", array_of(DataType::Utf8, false), true),
+        Field::new("f_array_opt_item", array_of(DataType::Utf8, true), false),
+        Field::new("f_opt_array_opt_item", array_of(DataType::Utf8, true), true),
         Field::new("f_map", map_of(DataType::Int64, false), false),
+        Field::new("f_opt_map", map_of(DataType::Int64, false), true),
     ]);
 
     let actual = avroarrow::convert_schema(&avro_schema).unwrap();

@@ -63,11 +63,11 @@ fn convert_to_datatype(src: &AvroSchema) -> Result<DataType, Box<dyn Error>> {
             Ok(DataType::Timestamp(TimeUnit::Nanosecond, Some(tz_offset!())))
         }
         AvroSchema::Date => Ok(DataType::Date32),
-        AvroSchema::Duration => Ok(DataType::Duration(TimeUnit::Millisecond)),
         AvroSchema::Enum { .. } => Ok(DataType::Utf8),
         AvroSchema::Decimal(schema) => {
             Ok(DataType::Decimal128(schema.precision as u8, schema.scale as i8))
         }
+        AvroSchema::Fixed(schema) => Ok(DataType::FixedSizeBinary(schema.size as i32)),
         AvroSchema::BigDecimal => Ok(DataType::Binary),
         AvroSchema::Array(schema) => {
             Ok(DataType::List(Arc::new(Field::new(
@@ -81,7 +81,11 @@ fn convert_to_datatype(src: &AvroSchema) -> Result<DataType, Box<dyn Error>> {
                 "entries",
                 DataType::Struct(vec![
                     Field::new("keys", DataType::Utf8, false),
-                    Field::new("values", convert_to_datatype(&schema.types)?, true),
+                    Field::new(
+                        "values",
+                        convert_to_datatype(&schema.types)?,
+                        is_nullable(&schema.types),
+                    ),
                 ].into()),
                 false,
             );

@@ -559,11 +559,20 @@ struct Contact {
 }
 
 #[derive(Serialize, AvroSchema)]
+struct Address {
+    country: String,
+    city: String,
+    street: String,
+    zipcode: Option<String>,
+}
+
+#[derive(Serialize, AvroSchema)]
 struct Person {
     id: String,
     name: String,
     age: Option<i32>,
-    contacts: HashMap<String, Contact>
+    contacts: HashMap<String, Contact>,
+    addresses: Option<Vec<Address>>,
 }
 
 #[test]
@@ -585,7 +594,8 @@ fn test_append_struct() {
                     email: "jon@company.com".to_string(),
                     phone: Some("+1 123 456 789".to_string()),
                 }
-            }
+            },
+            addresses: Some(vec![]),
         },
         Person {
             id: "p-2".to_string(),
@@ -601,6 +611,7 @@ fn test_append_struct() {
                     phone: Some("+1 423 456 789".to_string()),
                 }
             },
+            addresses: None,
         },
         Person {
             id: "p-3".to_string(),
@@ -612,6 +623,14 @@ fn test_append_struct() {
                     phone: None,
                 },
             },
+            addresses: Some(vec![
+                Address {
+                    country: "US".to_string(),
+                    city: "NY".to_string(),
+                    street: "Street 1".to_string(),
+                    zipcode: None,
+                }
+            ]),
         },
     ];
 
