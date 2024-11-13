@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::collections::HashMap;
 
 use apache_avro::Schema as AvroSchema;
@@ -8,10 +9,8 @@ use pretty_assertions::assert_eq;
 use avroarrow;
 use registry;
 
-macro_rules! tz_offset {
-    () => {
-        std::sync::Arc::from(format!("{:?}", chrono::Local::now().offset()))
-    };
+fn tz_offset() -> Option<Arc<str>> {
+    Some(Arc::from(format!("{:?}", chrono::Local::now().offset())))
 }
 
 fn array_of(data_type: DataType, nullable: bool) -> DataType {
@@ -28,7 +27,7 @@ fn map_of(data_type: DataType, nullable: bool) -> DataType {
                     Field::new("values", data_type, nullable),
                 ].into(),
             ),
-            nullable,
+            false,
         ).into(),
         false,
     )
@@ -58,14 +57,15 @@ fn test_convert_schema_flat() {
         Field::new("f_time_mc", DataType::Time64(TimeUnit::Microsecond), false),
         Field::new("f_timestamp_ms", DataType::Timestamp(TimeUnit::Millisecond, None), false),
         Field::new("f_timestamp_mc", DataType::Timestamp(TimeUnit::Microsecond, None), false),
-        Field::new("f_loc_timestamp_ms", DataType::Timestamp(TimeUnit::Millisecond, Some(tz_offset!())), false),
-        Field::new("f_loc_timestamp_mc", DataType::Timestamp(TimeUnit::Microsecond, Some(tz_offset!())), true),
+        Field::new("f_loc_timestamp_ms", DataType::Timestamp(TimeUnit::Millisecond, tz_offset()), false),
+        Field::new("f_loc_timestamp_mc", DataType::Timestamp(TimeUnit::Microsecond, tz_offset()), true),
         Field::new("f_array", array_of(DataType::Utf8, false), false),
         Field::new("f_opt_array", array_of(DataType::Utf8, false), true),
         Field::new("f_array_opt_item", array_of(DataType::Utf8, true), false),
         Field::new("f_opt_array_opt_item", array_of(DataType::Utf8, true), true),
         Field::new("f_map", map_of(DataType::Int64, false), false),
         Field::new("f_opt_map", map_of(DataType::Int64, false), true),
+        Field::new("f_opt_map_opt_value", map_of(DataType::Int64, true), true),
     ]);
 
     let actual = avroarrow::convert_schema(&avro_schema).unwrap();

@@ -7,12 +7,6 @@ use arrow::datatypes::{Schema as ArrowSchema, *};
 use arrow::array::builder::*;
 use chrono::Local;
 
-macro_rules! tz_offset {
-    () => {
-        Arc::from(format!("{:?}", Local::now().offset()))
-    };
-}
-
 pub fn convert_schema(src: &AvroSchema) -> Result<ArrowSchema, Box<dyn Error>> {
     match src {
         AvroSchema::Record(record_schema) => {
@@ -54,13 +48,13 @@ fn convert_to_datatype(src: &AvroSchema) -> Result<DataType, Box<dyn Error>> {
             Ok(DataType::Timestamp(TimeUnit::Nanosecond, None))
         }
         AvroSchema::LocalTimestampMillis => {
-            Ok(DataType::Timestamp(TimeUnit::Millisecond, Some(tz_offset!())))
+            Ok(arrow_local_timestamp_type(TimeUnit::Millisecond))
         }
         AvroSchema::LocalTimestampMicros => {
-            Ok(DataType::Timestamp(TimeUnit::Microsecond, Some(tz_offset!())))
+            Ok(arrow_local_timestamp_type(TimeUnit::Microsecond))
         }
         AvroSchema::LocalTimestampNanos => {
-            Ok(DataType::Timestamp(TimeUnit::Nanosecond, Some(tz_offset!())))
+            Ok(arrow_local_timestamp_type(TimeUnit::Nanosecond))
         }
         AvroSchema::Date => Ok(DataType::Date32),
         AvroSchema::Enum { .. } => Ok(DataType::Utf8),
@@ -70,22 +64,14 @@ fn convert_to_datatype(src: &AvroSchema) -> Result<DataType, Box<dyn Error>> {
         AvroSchema::Fixed(schema) => Ok(DataType::FixedSizeBinary(schema.size as i32)),
         AvroSchema::BigDecimal => Ok(DataType::Binary),
         AvroSchema::Array(schema) => {
-            Ok(DataType::List(Arc::new(Field::new(
-                "item",
-                convert_to_datatype(&schema.items)?,
-                is_nullable(&schema.items),
-            ))))
+            Ok(DataType::List(Arc::new(create_array_field(schema)?)))
         }
         AvroSchema::Map(schema) => {
             let entries = Field::new(
                 "entries",
                 DataType::Struct(vec![
                     Field::new("keys", DataType::Utf8, false),
-                    Field::new(
-                        "values",
-                        convert_to_datatype(&schema.types)?,
-                        is_nullable(&schema.types),
-                    ),
+                    create_map_values_field(schema)?,
                 ].into()),
                 false,
             );
@@ -115,6 +101,12 @@ fn convert_to_datatype(src: &AvroSchema) -> Result<DataType, Box<dyn Error>> {
     }
 }
 
+#[inline]
+fn tz_offset() -> Option<Arc<str>> {
+    Some(Arc::from(format!("{:?}", Local::now().offset())))
+}
+
+#[inline]
 fn is_nullable(src: &AvroSchema) -> bool {
     if let AvroSchema::Union(schemas) = src {
         schemas
@@ -126,6 +118,7 @@ fn is_nullable(src: &AvroSchema) -> bool {
     }
 }
 
+#[inline]
 fn is_optional(src: &UnionSchema) -> bool {
     src.variants().len() == 2 && matches!(src.variants()[0], AvroSchema::Null)
 }
@@ -181,44 +174,71 @@ fn decimal_builder(schema: &DecimalSchema, cap: usize) -> Decimal128Builder {
 }
 
 #[inline]
-fn arrow_timestamp_type(time_unit: TimeUnit) -> DataType {
-    DataType::Timestamp(time_unit, Some(tz_offset!()))
+fn arrow_local_timestamp_type(time_unit: TimeUnit) -> DataType {
+    DataType::Timestamp(time_unit, tz_offset())
 }
 
 #[inline]
 fn local_timestamp_ms_builder(cap: usize) -> TimestampMillisecondBuilder {
     TimestampMillisecondBuilder::with_capacity(cap)
-        .with_data_type(arrow_timestamp_type(TimeUnit::Millisecond))
+        .with_data_type(arrow_local_timestamp_type(TimeUnit::Millisecond))
 }
 
 #[inline]
 fn local_timestamp_mc_builder(cap: usize) -> TimestampMicrosecondBuilder {
     TimestampMicrosecondBuilder::with_capacity(cap)
-        .with_data_type(arrow_timestamp_type(TimeUnit::Microsecond))
+        .with_data_type(arrow_local_timestamp_type(TimeUnit::Microsecond))
 }
 
 #[inline]
 fn local_timestamp_ns_builder(cap: usize) -> TimestampNanosecondBuilder {
     TimestampNanosecondBuilder::with_capacity(cap)
-        .with_data_type(arrow_timestamp_type(TimeUnit::Nanosecond))
+        .with_data_type(arrow_local_timestamp_type(TimeUnit::Nanosecond))
 }
 
+#[inline]
+fn create_array_field(schema: &ArraySchema) -> Result<Field, Box<dyn Error>> {
+    Ok(Field::new(
+        "item",
+        convert_to_datatype(&schema.items)?,
+        is_nullable(&schema.items),
+    ))
+}
+
+#[inline]
+fn create_map_values_field(schema: &MapSchema) -> Result<Field, Box<dyn Error>> {
+    Ok(Field::new(
+        "values",
+        convert_to_datatype(&schema.types)?,
+        is_nullable(&schema.types),
+    ))
+}
+
+#[inline]
 fn array_builder(
     schema: &ArraySchema,
     cap: usize,
 ) -> Result<Box<dyn ArrayBuilder>, Box<dyn Error>>  {
-    Ok(Box::new(ListBuilder::with_capacity(create_builder(&schema.items, cap)?, cap)))
+    let builder = create_builder(&schema.items, cap)?;
+    let result = ListBuilder::with_capacity(builder, cap)
+        .with_field(create_array_field(schema)?);
+    Ok(Box::new(result))
 }
 
+#[inline]
 fn map_builder(
     schema: &MapSchema,
     cap: usize,
 ) -> Result<Box<dyn ArrayBuilder>, Box<dyn Error>> {
     let keys_builder = StringBuilder::with_capacity(cap, 2048);
     let values_builder = create_builder(schema.types.as_ref(), cap)?;
-    Ok(Box::new(MapBuilder::new(None, keys_builder, values_builder)))
+    let result = MapBuilder::new(None, keys_builder, values_builder)
+        .with_values_field(create_map_values_field(schema)?);
+
+    Ok(Box::new(result))
 }
 
+#[inline]
 fn struct_builder(
     schema: &RecordSchema,
     cap: usize,

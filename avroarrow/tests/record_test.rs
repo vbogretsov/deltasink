@@ -471,7 +471,8 @@ fn test_append_string_array() {
         .map(|v| Value::Array(v.iter().map(|i| Value::String(i.to_string())).collect()))
         .collect();
 
-    let mut expected_builder = ListBuilder::new(StringBuilder::with_capacity(32, 32));
+    let mut expected_builder = ListBuilder::new(StringBuilder::with_capacity(32, 32))
+        .with_field(arrow::datatypes::Field::new("item", DataType::Utf8, false));
     for i in raw {
         for j in i {
             expected_builder.values().append_value(j);
@@ -578,12 +579,11 @@ struct Person {
 #[test]
 fn test_append_struct() {
     let schema = Person::get_schema();
-    dbg!(&schema);
 
     let records = vec![
         Person {
             id: "p-1".to_string(),
-            name: "Job".to_string(),
+            name: "Jon".to_string(),
             age: Some(33),
             contacts: hashmap! {
                 "personal".to_string() => Contact {
@@ -593,7 +593,7 @@ fn test_append_struct() {
                 "work".to_string() => Contact {
                     email: "jon@company.com".to_string(),
                     phone: Some("+1 123 456 789".to_string()),
-                }
+                },
             },
             addresses: Some(vec![]),
         },
@@ -609,7 +609,7 @@ fn test_append_struct() {
                 "work".to_string() => Contact {
                     email: "don@company.com".to_string(),
                     phone: Some("+1 423 456 789".to_string()),
-                }
+                },
             },
             addresses: None,
         },
@@ -618,7 +618,7 @@ fn test_append_struct() {
             name: "Rob".to_string(),
             age: None,
             contacts: hashmap! {
-                "rob".to_string() => Contact {
+                "personal".to_string() => Contact {
                     email: "rob@mail.com".to_string(),
                     phone: None,
                 },
@@ -645,22 +645,94 @@ fn test_append_struct() {
 
     let mut builder = avroarrow::create_builder(&schema, 32).unwrap();
     for value in &values {
-        dbg!(&value);
         avroarrow::append_record(&mut builder, &schema, value).unwrap();
     }
 
-    let actual = builder.finish();
-    dbg!(actual);
+    let array = builder.finish();
+    let actual = array.as_any().downcast_ref::<StructArray>().unwrap();
 
-    /* match schema {
-        Schema::Record(record_schema) => {
-            match &record_schema.fields[2].schema {
-                Schema::Union(union_schema) => {
-                    assert!(matches!(union_schema.variants()[0], Schema::Null));
-                }
-                _ => {  }
-            }
-        },
-        _ => {  }
-    } */
+    assert_eq!(3, actual.len());
+
+    let expected_ids: Arc<dyn Array> = Arc::new(StringArray::from(vec![
+        "p-1",
+        "p-2",
+        "p-3",
+    ]));
+    let actual_ids = actual.column_by_name("id").unwrap();
+    assert_eq!(expected_ids.as_ref(), actual_ids);
+
+    let expected_names: Arc<dyn Array> = Arc::new(StringArray::from(vec![
+        "Jon",
+        "Don",
+        "Rob",
+    ]));
+    let actual_names = actual.column_by_name("name").unwrap();
+    assert_eq!(expected_names.as_ref(), actual_names);
+
+    let expected_ages: Arc<dyn Array> = Arc::new(Int32Array::from(vec![
+        Some(33),
+        Some(43),
+        None,
+    ]));
+    let actual_ages = actual.column_by_name("age").unwrap();
+    assert_eq!(expected_ages.as_ref(), actual_ages);
+
+    let actual_addresses = actual.column_by_name("addresses")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<ListArray>()
+        .unwrap();
+
+    debug_assert_eq!(0, actual_addresses.value_length(0));
+    debug_assert_eq!(0, actual_addresses.value_length(1));
+    debug_assert_eq!(1, actual_addresses.value_length(2));
+
+    let item_2_addresses = actual_addresses
+        .value(2);
+
+    let item_2_addresses = item_2_addresses
+        .as_any()
+        .downcast_ref::<StructArray>()
+        .unwrap();
+
+    assert_eq!(
+        "US",
+        item_2_addresses
+            .column_by_name("country")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap()
+            .value(0)
+    );
+    assert_eq!(
+        "NY",
+        item_2_addresses
+            .column_by_name("city")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap()
+            .value(0)
+    );
+    assert_eq!(
+        "Street 1",
+        item_2_addresses
+            .column_by_name("street")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap()
+            .value(0)
+    );
+    assert_eq!(
+        1,
+        item_2_addresses
+            .column_by_name("zipcode")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap()
+            .null_count()
+    );
 }
