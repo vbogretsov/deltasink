@@ -1,0 +1,27 @@
+{
+  "type": "record",
+  "name": "Address",
+  "namespace": "com.deltasink.test",
+  "fields": [
+    {
+      "name": "country",
+      "type": "string"
+    },
+    {
+      "name": "city",
+      "type": "string"
+    },
+    {
+      "name": "street",
+      "type": "string"
+    },
+    {
+      "name": "state",
+      "type": ["null", "string"]
+    },
+    {
+      "name": "zipcode",
+      "type": ["null", "string"]
+    }
+  ]
+}

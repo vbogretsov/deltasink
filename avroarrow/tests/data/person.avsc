@@ -1,0 +1,51 @@
+{
+  "type": "record",
+  "name": "Person",
+  "namespace": "com.deltasink.test",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string",
+      "logicalType": "uuid"
+    },
+    {
+      "name": "first_name",
+      "type": "string"
+    },
+    {
+      "name": "last_name",
+      "type": "string"
+    },
+    {
+      "name": "birthdate",
+      "type": ["null", {"type": "int", "logicalType": "date"}]
+    },
+    {
+      "name": "contacts",
+      "type": "array",
+      "items": [
+        "null",
+        "com.deltasink.test.Contact"
+      ]
+    },
+    {
+      "name": "addresses",
+      "type": "map",
+      "values": "com.deltasink.test.Address"
+    },
+    {
+      "name": "job",
+      "type": "record",
+      "fields": [
+        {
+          "name": "company",
+          "type": "string"
+        },
+        {
+          "name": "position",
+          "type": "string"
+        }
+      ]
+    }
+  ]
+}
