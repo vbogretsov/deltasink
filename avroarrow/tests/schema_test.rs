@@ -1,13 +1,10 @@
 use std::sync::Arc;
-use std::collections::HashMap;
 
 use apache_avro::Schema as AvroSchema;
-use apache_avro::schema::Name;
 use arrow::datatypes::*;
 use pretty_assertions::assert_eq;
 
 use avroarrow;
-use registry;
 
 fn tz_offset() -> Option<Arc<str>> {
     Some(Arc::from(format!("{:?}", chrono::Local::now().offset())))
@@ -86,14 +83,9 @@ fn test_convert_schema_nested() {
         .map(|s| s.as_str())
         .collect();
 
-    let mut schemas: HashMap<Name, AvroSchema> = HashMap::new();
-
     let avro_schemas = AvroSchema::parse_list(&avro_schemas_ref).unwrap();
-    for avro_schema in avro_schemas.iter() {
-        registry::register_schema(&avro_schema, &mut schemas).unwrap();
-    }
-
-    let person_schema = registry::expand_schema(&avro_schemas[2], &schemas).unwrap();
+    let person_schema = &avro_schemas[2];
+    dbg!(&person_schema);
 
     let arrow_contact_schema = DataType::Struct(vec![
         Field::new("email", DataType::Utf8, false),

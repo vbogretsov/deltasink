@@ -31,7 +31,7 @@
     {
       "name": "addresses",
       "type": "map",
-      "values": "com.deltasink.test.Address"
+      "values": "Address"
     },
     {
       "name": "job",

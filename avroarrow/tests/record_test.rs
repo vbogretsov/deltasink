@@ -58,6 +58,20 @@ fn to_arrow<T: ArrayBuilder>(
         .finish()
 }
 
+fn record_batch_to_json(
+    record_batch: &arrow::record_batch::RecordBatch,
+) -> serde_json::Value {
+    let buffer = Vec::new();
+    let mut writer = arrow_json::ArrayWriter::new(buffer);
+    writer.write_batches(&vec![record_batch]).unwrap();
+    writer.finish().unwrap();
+    let json_data = writer.into_inner();
+    let json_rows: Vec<serde_json::Map<String, serde_json::Value>> = 
+        serde_json::from_reader(json_data.as_slice()).unwrap();
+
+    json_rows.into()
+}
+
 #[test]
 fn test_append_bool() {
     let row = vec![true, false, true];
@@ -488,6 +502,7 @@ fn test_append_string_array() {
 
 #[test]
 fn test_append_string_map() {
+    // TODO: Use JSON based approach like for struct to simplify test.
     let raw = vec![
         hashmap! {
             "x1" => "a",
@@ -651,88 +666,68 @@ fn test_append_struct() {
     let array = builder.finish();
     let actual = array.as_any().downcast_ref::<StructArray>().unwrap();
 
-    assert_eq!(3, actual.len());
+    let arrow_schema = avroarrow::convert_schema(&schema).unwrap();
+    let record_batch = arrow::record_batch::RecordBatch::try_new(
+        arrow_schema.into(),
+        vec![
+            Arc::clone(actual.column_by_name("id").unwrap()),
+            Arc::clone(actual.column_by_name("name").unwrap()),
+            Arc::clone(actual.column_by_name("age").unwrap()),
+            Arc::clone(actual.column_by_name("contacts").unwrap()),
+            Arc::clone(actual.column_by_name("addresses").unwrap()),
+        ],
+    ).unwrap();
 
-    let expected_ids: Arc<dyn Array> = Arc::new(StringArray::from(vec![
-        "p-1",
-        "p-2",
-        "p-3",
-    ]));
-    let actual_ids = actual.column_by_name("id").unwrap();
-    assert_eq!(expected_ids.as_ref(), actual_ids);
+    let actual = record_batch_to_json(&record_batch);
 
-    let expected_names: Arc<dyn Array> = Arc::new(StringArray::from(vec![
-        "Jon",
-        "Don",
-        "Rob",
-    ]));
-    let actual_names = actual.column_by_name("name").unwrap();
-    assert_eq!(expected_names.as_ref(), actual_names);
+    let expected = serde_json::json!([
+        {
+            "id": "p-1",
+            "name": "Jon",
+            "age": 33,
+            "contacts": {
+                "personal": {
+                    "email": "jon@mail.com",
+                },
+                "work": {
+                    "email": "jon@company.com",
+                    "phone": "+1 123 456 789",
+                },
+            },
+            "addresses": [],
+        },
+        {
+            "id": "p-2",
+            "name": "Don",
+            "age": 43,
+            "contacts": {
+                "personal": {
+                    "email": "don@mail.com",
+                    "phone": "+1 223 456 789",
+                },
+                "work": {
+                    "email": "don@company.com",
+                    "phone": "+1 423 456 789",
+                },
+            },
+        },
+        {
+            "id": "p-3",
+            "name": "Rob",
+            "contacts": {
+                "personal": {
+                    "email": "rob@mail.com",
+                },
+            },
+            "addresses": [
+                {
+                    "city": "NY",
+                    "country": "US",
+                    "street": "Street 1",
+                },
+            ]
+        }
+    ]);
 
-    let expected_ages: Arc<dyn Array> = Arc::new(Int32Array::from(vec![
-        Some(33),
-        Some(43),
-        None,
-    ]));
-    let actual_ages = actual.column_by_name("age").unwrap();
-    assert_eq!(expected_ages.as_ref(), actual_ages);
-
-    let actual_addresses = actual.column_by_name("addresses")
-        .unwrap()
-        .as_any()
-        .downcast_ref::<ListArray>()
-        .unwrap();
-
-    debug_assert_eq!(0, actual_addresses.value_length(0));
-    debug_assert_eq!(0, actual_addresses.value_length(1));
-    debug_assert_eq!(1, actual_addresses.value_length(2));
-
-    let item_2_addresses = actual_addresses
-        .value(2);
-
-    let item_2_addresses = item_2_addresses
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .unwrap();
-
-    assert_eq!(
-        "US",
-        item_2_addresses
-            .column_by_name("country")
-            .unwrap()
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .unwrap()
-            .value(0)
-    );
-    assert_eq!(
-        "NY",
-        item_2_addresses
-            .column_by_name("city")
-            .unwrap()
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .unwrap()
-            .value(0)
-    );
-    assert_eq!(
-        "Street 1",
-        item_2_addresses
-            .column_by_name("street")
-            .unwrap()
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .unwrap()
-            .value(0)
-    );
-    assert_eq!(
-        1,
-        item_2_addresses
-            .column_by_name("zipcode")
-            .unwrap()
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .unwrap()
-            .null_count()
-    );
+    assert_eq!(expected, actual);
 }

@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+apache-avro = "0.17.0"
+arrow = "53.2.0"
+rdkafka = "0.36.2"
+clap = { version = "4.5.20", features = ["std", "usage", "derive", "env", "help", "color"], default-features = false }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["fmt", "json", "env-filter"] }
