@@ -42,12 +42,12 @@ pub struct Client {
 
 #[inline]
 fn sr_versions_url(base_url: &str, subject: &str) -> String {
-    format!("{}/subjects/{}-value/versions", base_url, subject)
+    format!("{}/subjects/{}/versions", base_url, subject)
 }
 
 #[inline]
 fn sr_schema_url(base_url: &str, subject: &str, version: i32) -> String {
-    format!("{}/subjects/{}-value/versions/{}", base_url, subject, version)
+    format!("{}/subjects/{}/versions/{}", base_url, subject, version)
 }
 
 impl Client {

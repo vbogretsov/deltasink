@@ -1,5 +1,5 @@
 #[test]
-fn test_avro_registry_get_with_references() {
+fn test_avro_registry_get_with_references_ok() {
     let location_schema = r#"
         {
             "type": "record",
@@ -128,6 +128,8 @@ fn test_avro_registry_get_with_references() {
 
     let mut instance = sregistry::avro::AvroRegistry::new(client);
 
-    let _actual = instance.get("User", 2).unwrap();
+    let _actual = instance.get("User-value", 2).unwrap();
+    // TODO: Validate value.
     dbg!(_actual);
+    // TODO: Ensure second call does not uses reqwest.
 }

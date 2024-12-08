@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 apache-avro = "0.17.0"
+ostr = "0.1.0"
 reqwest = { version = "0.12.9", features = ["blocking", "json"] }
 serde = "1.0.215"
 tracing = "0.1.40"

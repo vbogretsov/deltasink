@@ -12,7 +12,7 @@ fn test_get_versions_ok() {
     let client = reqwest::blocking::Client::new();
     let registry = sregistry::Client::new(client, server.url());
 
-    let versions = registry.get_versions("test").unwrap();
+    let versions = registry.get_versions("test-value").unwrap();
     assert_eq!(versions, vec![1, 2]);
 }
 
@@ -30,7 +30,7 @@ fn test_get_versions_404() {
     let client = reqwest::blocking::Client::new();
     let registry = sregistry::Client::new(client, server.url());
 
-    let versions = registry.get_versions("test");
+    let versions = registry.get_versions("test-value");
     assert!(versions.is_err(), "expected error but got ok");
 }
 
@@ -155,7 +155,7 @@ fn test_get_schema_ok() {
             schema: v1.to_string(),
             references: None,
         },
-        instance.get_subject("user", 1).unwrap(),
+        instance.get_subject("user-value", 1).unwrap(),
     );
     assert_eq!(
         sregistry::Subject{
@@ -170,7 +170,7 @@ fn test_get_schema_ok() {
                 },
             ].into(),
         },
-        instance.get_subject("user", 2).unwrap(),
+        instance.get_subject("user-value", 2).unwrap(),
     );
 }
 
@@ -189,6 +189,6 @@ fn test_get_schema_404() {
     let client = reqwest::blocking::Client::new();
     let registry = sregistry::Client::new(client, server.url());
 
-    let res = registry.get_subject("user", 1);
+    let res = registry.get_subject("user-value", 1);
     assert!(res.is_err(), "expected error but got ok");
 }
